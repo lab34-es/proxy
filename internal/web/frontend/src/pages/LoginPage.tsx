@@ -1,15 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Box from '@mui/joy/Box'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Typography from '@mui/joy/Typography'
-import FormControl from '@mui/joy/FormControl'
-import FormLabel from '@mui/joy/FormLabel'
-import Input from '@mui/joy/Input'
-import Button from '@mui/joy/Button'
-import Alert from '@mui/joy/Alert'
-import { useAuth } from '../context/AuthContext'
+
+import Lockup from '@/components/brand/Lockup'
+import Monogram from '@/components/brand/Monogram'
+import DismissibleAlert from '@/components/DismissibleAlert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useAuth } from '@/context/AuthContext'
 
 export default function LoginPage() {
   const [token, setToken] = useState('')
@@ -52,44 +51,43 @@ export default function LoginPage() {
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-      }}
-    >
-      <Card variant="outlined" sx={{ width: 380 }}>
+    <div className="flex min-h-svh flex-col items-center justify-center gap-8 p-6">
+      <div className="flex flex-col items-center gap-5">
+        <Monogram size={64} />
+        <Lockup className="text-3xl" />
+      </div>
+
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>Console</CardTitle>
+          <CardDescription>Enter your admin token to open the dashboard.</CardDescription>
+        </CardHeader>
         <CardContent>
-          <Typography level="h3" sx={{ mb: 2 }}>
-            LLM Proxy
-          </Typography>
-          <Typography level="body-sm" sx={{ mb: 3 }}>
-            Enter your admin token to access the dashboard.
-          </Typography>
           {error && (
-            <Alert color="danger" sx={{ mb: 2 }}>
+            <DismissibleAlert variant="destructive" className="mb-4" onClose={() => setError('')}>
               {error}
-            </Alert>
+            </DismissibleAlert>
           )}
-          <form onSubmit={handleSubmit}>
-            <FormControl sx={{ mb: 2 }}>
-              <FormLabel>Admin Token</FormLabel>
+          <form onSubmit={handleSubmit} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="admin-token">Admin token</Label>
               <Input
+                id="admin-token"
                 type="password"
-                placeholder="Enter admin token"
+                placeholder="••••••••"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 autoFocus
               />
-            </FormControl>
-            <Button type="submit" fullWidth loading={loading}>
-              Sign In
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Verifying…' : 'Sign in'}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </Box>
+
+      <p className="kicker text-muted-foreground">AI tooling &amp; training for IT operations</p>
+    </div>
   )
 }

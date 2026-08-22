@@ -1,73 +1,30 @@
-# React + TypeScript + Vite
+# llm-proxy dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The admin console for llm-proxy, following the lab34 brand guidelines: React 19 +
+TypeScript on Vite, styled with Tailwind CSS v4 and [shadcn/ui](https://ui.shadcn.com)
+components (Radix primitives + `class-variance-authority`).
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Fonts** — IBM Plex Sans (interface copy) and IBM Plex Mono (logotype, labels,
+  tables, figures, code), self-hosted via `@fontsource` so the built binary works
+  offline. Medium 500 is the heaviest weight in use — no bold anywhere.
+- **Theme tokens** — `src/index.css` maps the lab34 palette (bone `#F3F2F2`,
+  ink `#201F1D`, brass `#B68235`, grey `#9B9797`, carbon `#2D2B2B`) onto shadcn's
+  CSS variables for both light (ink on bone) and dark (bone on ink/carbon) modes.
+  Brass appears as stroke — rules, focus rings, small marks — never as a fill.
+- **Components** — `src/components/ui/` holds the shadcn primitives
+  (`components.json` is configured, so `npx shadcn@latest add <component>` works);
+  `src/components/brand/` holds the lab34 wordmark lockup and «34» monogram.
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run dev     # Vite dev server on :5173, proxying /admin and /v1 to :8080
+npm run lint
+npm run build   # emits dist/, embedded into the Go binary via go:embed
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+From the repository root, `./development.sh` starts this dev server together with
+the Go backend.

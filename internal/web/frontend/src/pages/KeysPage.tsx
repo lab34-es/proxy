@@ -1,27 +1,32 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
-import Box from '@mui/joy/Box'
-import Typography from '@mui/joy/Typography'
-import Table from '@mui/joy/Table'
-import Sheet from '@mui/joy/Sheet'
-import Button from '@mui/joy/Button'
-import IconButton from '@mui/joy/IconButton'
-import Input from '@mui/joy/Input'
-import Select from '@mui/joy/Select'
-import Option from '@mui/joy/Option'
-import FormControl from '@mui/joy/FormControl'
-import FormLabel from '@mui/joy/FormLabel'
-import DismissibleAlert from '../components/DismissibleAlert'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Chip from '@mui/joy/Chip'
-import Modal from '@mui/joy/Modal'
-import ModalDialog from '@mui/joy/ModalDialog'
-import ModalClose from '@mui/joy/ModalClose'
-import Stack from '@mui/joy/Stack'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'
-import { listKeys, createKey, revokeKey, listProviders, type APIKey, type Provider } from '../api/client'
+import { CopyIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+
+import PageHeader from '@/components/PageHeader'
+import DismissibleAlert from '@/components/DismissibleAlert'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { formatDateTime } from '@/lib/format'
+import { listKeys, createKey, revokeKey, listProviders, type APIKey, type Provider } from '@/api/client'
 
 export default function KeysPage() {
   const [keys, setKeys] = useState<APIKey[]>([])
@@ -31,26 +36,32 @@ export default function KeysPage() {
   const [flash, setFlash] = useState('')
   const [newKey, setNewKey] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<APIKey | null>(null)
 
   const [name, setName] = useState('')
   const [providerId, setProviderId] = useState('')
   const [rpm, setRpm] = useState('60')
   const [submitting, setSubmitting] = useState(false)
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      const [k, p] = await Promise.all([listKeys(), listProviders()])
-      setKeys(k || [])
-      setProviders(p || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [reloadTick, setReloadTick] = useState(0)
+  const reload = useCallback(() => setReloadTick((t) => t + 1), [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    let stale = false
+    ;(async () => {
+      try {
+        const [k, p] = await Promise.all([listKeys(), listProviders()])
+        if (stale) return
+        setKeys(k || [])
+        setProviders(p || [])
+      } catch (err: unknown) {
+        if (!stale) setError(err instanceof Error ? err.message : 'Failed to load data')
+      } finally {
+        if (!stale) setLoading(false)
+      }
+    })()
+    return () => { stale = true }
+  }, [reloadTick])
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -67,12 +78,11 @@ export default function KeysPage() {
         rate_limit_rpm: parseInt(rpm) || 60,
       })
       setNewKey(result.key)
-      setFlash('API key created. Copy it now - it will not be shown again.')
       setName('')
       setProviderId('')
       setRpm('60')
       setModalOpen(false)
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create key')
     } finally {
@@ -81,11 +91,10 @@ export default function KeysPage() {
   }
 
   async function handleRevoke(id: string) {
-    if (!confirm('Revoke this API key? It will no longer be usable.')) return
     try {
       await revokeKey(id)
       setFlash('Key revoked.')
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to revoke key')
     }
@@ -96,122 +105,153 @@ export default function KeysPage() {
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography level="h3">API Keys</Typography>
-        <Button startDecorator={<AddIcon />} onClick={() => setModalOpen(true)}>
-          Create Key
-        </Button>
-      </Box>
+    <div>
+      <PageHeader
+        index="02"
+        title="API keys"
+        description="Keys clients use to call the proxy. Each key maps to one provider."
+        actions={
+          <Button onClick={() => setModalOpen(true)}>
+            <PlusIcon /> Create key
+          </Button>
+        }
+      />
 
       {newKey && (
         <DismissibleAlert
-          color="warning"
-          sx={{ mb: 2 }}
-          endDecorator={
-            <IconButton
-              size="sm"
-              color="warning"
-              variant="plain"
-              onClick={() => { navigator.clipboard.writeText(newKey); setFlash('Key copied to clipboard.') }}
-            >
-              <ContentCopyIcon />
-            </IconButton>
-          }
+          title="new api key — copy it now, it will not be shown again"
+          className="mb-4"
           onClose={() => setNewKey('')}
+          endAction={
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Copy key to clipboard"
+              onClick={() => {
+                navigator.clipboard.writeText(newKey)
+                setFlash('Key copied to clipboard.')
+              }}
+            >
+              <CopyIcon />
+            </Button>
+          }
         >
-          <Box>
-            <Typography level="body-sm" fontWeight="bold">New API Key (copy it now!):</Typography>
-            <Typography level="body-xs" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>{newKey}</Typography>
-          </Box>
+          <code className="font-mono text-xs break-all">{newKey}</code>
         </DismissibleAlert>
       )}
 
-      {flash && <DismissibleAlert color="success" sx={{ mb: 2 }} onClose={() => setFlash('')}>{flash}</DismissibleAlert>}
-      {error && <DismissibleAlert color="danger" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</DismissibleAlert>}
+      {flash && <DismissibleAlert variant="success" className="mb-4" onClose={() => setFlash('')}>{flash}</DismissibleAlert>}
+      {error && <DismissibleAlert variant="destructive" className="mb-4" onClose={() => setError('')}>{error}</DismissibleAlert>}
 
-      <Card variant="outlined">
-        <CardContent sx={{ p: 0 }}>
-          <Sheet sx={{ overflow: 'auto' }}>
-            <Table stickyHeader>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Provider</th>
-                  <th>RPM</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th style={{ width: 60 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={7}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>Loading...</Typography></td></tr>
-                ) : keys.length === 0 ? (
-                  <tr><td colSpan={7}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>No API keys created.</Typography></td></tr>
-                ) : (
-                  keys.map((k) => (
-                    <tr key={k.id}>
-                      <td><Typography level="body-xs" fontFamily="monospace">{k.id.slice(0, 8)}</Typography></td>
-                      <td>{k.name}</td>
-                      <td>{providerName(k.provider_id)}</td>
-                      <td>{k.rate_limit_rpm}</td>
-                      <td>
-                        {k.revoked_at ? (
-                          <Chip size="sm" color="danger" variant="soft">Revoked</Chip>
-                        ) : (
-                          <Chip size="sm" color="success" variant="soft">Active</Chip>
-                        )}
-                      </td>
-                      <td><Typography level="body-xs">{new Date(k.created_at).toLocaleString()}</Typography></td>
-                      <td>
-                        {!k.revoked_at && (
-                          <IconButton size="sm" color="danger" variant="plain" onClick={() => handleRevoke(k.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Sheet>
-        </CardContent>
+      <Card className="gap-0 py-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead className="text-right">RPM</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-12" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  loading…
+                </TableCell>
+              </TableRow>
+            ) : keys.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  no api keys created
+                </TableCell>
+              </TableRow>
+            ) : (
+              keys.map((k) => (
+                <TableRow key={k.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{k.id.slice(0, 8)}</TableCell>
+                  <TableCell>{k.name}</TableCell>
+                  <TableCell>{providerName(k.provider_id)}</TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums">{k.rate_limit_rpm}</TableCell>
+                  <TableCell>
+                    {k.revoked_at ? (
+                      <Badge variant="muted">revoked</Badge>
+                    ) : (
+                      <Badge variant="outline">
+                        <span className="size-1.5 bg-brass" aria-hidden />
+                        active
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(k.created_at)}</TableCell>
+                  <TableCell className="py-1 text-right">
+                    {!k.revoked_at && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Revoke key ${k.name}`}
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => setRevokeTarget(k)}
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <ModalDialog>
-          <ModalClose />
-          <Typography level="h4">Create API Key</Typography>
-          <form onSubmit={handleCreate}>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <FormControl required>
-                <FormLabel>Name</FormLabel>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. my-app-key" />
-              </FormControl>
-              <FormControl required>
-                <FormLabel>Provider</FormLabel>
-                <Select
-                  value={providerId}
-                  onChange={(_, v) => setProviderId(v || '')}
-                  placeholder="Select a provider"
-                >
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create API key</DialogTitle>
+            <DialogDescription>The key value is shown once, on creation.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="key-name">Name</Label>
+              <Input id="key-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. my-app-key" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="key-provider">Provider</Label>
+              <Select value={providerId} onValueChange={setProviderId}>
+                <SelectTrigger id="key-provider" className="w-full">
+                  <SelectValue placeholder="Select a provider" />
+                </SelectTrigger>
+                <SelectContent>
                   {providers.map((p) => (
-                    <Option key={p.id} value={p.id}>{p.name}</Option>
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
-                </Select>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Rate Limit (RPM)</FormLabel>
-                <Input type="number" value={rpm} onChange={(e) => setRpm(e.target.value)} />
-              </FormControl>
-              <Button type="submit" loading={submitting}>Create Key</Button>
-            </Stack>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="key-rpm">Rate limit (RPM)</Label>
+              <Input id="key-rpm" type="number" value={rpm} onChange={(e) => setRpm(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create key'}
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalDialog>
-      </Modal>
-    </Box>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => { if (!open) setRevokeTarget(null) }}
+        title="Revoke API key"
+        description={`Revoke “${revokeTarget?.name}”? It will no longer be usable.`}
+        confirmLabel="Revoke"
+        onConfirm={() => { if (revokeTarget) handleRevoke(revokeTarget.id) }}
+      />
+    </div>
   )
 }

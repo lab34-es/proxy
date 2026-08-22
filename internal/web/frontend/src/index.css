@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * lab34 brand tokens (Brand Guidelines v1.0 — August 2026).
+ *
+ * Two inks and one metal: Bone and Ink carry everything; Brass appears as
+ * stroke — rules, underlines, the OSS slash — never as a fill or background.
+ * Accent-coloured text uses the deep step of brass. Carbon is reserved for
+ * dark panels and reversed lockups — code blocks, terminal UI.
+ */
+:root {
+  --bone: #f3f2f2;
+  --ink: #201f1d;
+  --brass: #b68235;
+  --grey: #9b9797;
+  --carbon: #2d2b2b;
+
+  /* Accent-coloured text takes brass's deep step on bone… */
+  --brass-ink: #7d5411;
+
+  --background: var(--bone);
+  --foreground: var(--ink);
+  --card: #faf9f8;
+  --card-foreground: var(--ink);
+  --popover: #faf9f8;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--bone);
+  --secondary: #e9e7e4;
+  --secondary-foreground: var(--ink);
+  --muted: #eae8e5;
+  --muted-foreground: #6e6a66;
+  --accent: #ebe9e6;
+  --accent-foreground: var(--ink);
+  --destructive: var(--brass-ink);
+  --border: #dcdad6;
+  --input: #cfccc7;
+  --ring: var(--brass);
+  --radius: 0rem;
+}
+
+/* Reversed lockup: bone on ink, panels in carbon. Brass reads fine on dark
+ * ground, so it serves as both stroke and accent text here. */
+.dark {
+  /* …and a lighter step on ink, where the deep step would sink. */
+  --brass-ink: #c99d5e;
+
+  --background: var(--ink);
+  --foreground: var(--bone);
+  --card: var(--carbon);
+  --card-foreground: var(--bone);
+  --popover: var(--carbon);
+  --popover-foreground: var(--bone);
+  --primary: var(--bone);
+  --primary-foreground: var(--ink);
+  --secondary: #343230;
+  --secondary-foreground: var(--bone);
+  --muted: #343230;
+  --muted-foreground: #a5a19c;
+  --accent: #383633;
+  --accent-foreground: var(--bone);
+  --destructive: var(--brass-ink);
+  --border: #3b3936;
+  --input: #454340;
+  --ring: var(--brass);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-bone: var(--bone);
+  --color-ink: var(--ink);
+  --color-brass: var(--brass);
+  --color-brass-ink: var(--brass-ink);
+  --color-grey: var(--grey);
+  --color-carbon: var(--carbon);
+
+  /* One family, two voices. */
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* Medium 500 is the heaviest weight the brand uses — no bold anywhere. */
+  --font-weight-semibold: 500;
+  --font-weight-bold: 500;
+  --font-weight-extrabold: 500;
+  --font-weight-black: 500;
+
+  /* It reads as an entry in a log, not a decorated brand. */
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: var(--radius);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 500;
+  }
+  b,
+  strong {
+    font-weight: 500;
+  }
+  ::selection {
+    background-color: color-mix(in srgb, var(--brass) 25%, transparent);
+  }
+}
+
+@layer utilities {
+  /* Mono kicker: the small tracked-out label voice of the guidelines
+   * ("CLEAR SPACE", "MINIMUM SIZE", "COLOUR"). */
+  .kicker {
+    @apply font-mono text-[11px] uppercase tracking-[0.14em];
+  }
+  /* The wordmark's slightly tightened tracking (−4%). */
+  .tracking-logotype {
+    letter-spacing: -0.04em;
+  }
+}

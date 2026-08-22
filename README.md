@@ -110,11 +110,11 @@ llm-proxy/
     ├── proxy/forwarder.go          # Upstream request forwarding + guardrail enforcement
     └── web/
         ├── spa.go                  # SPA handler (embeds frontend/dist/)
-        └── frontend/               # React app (Vite + TypeScript + MUI Joy)
+        └── frontend/               # React app (Vite + TypeScript + Tailwind + shadcn/ui)
             ├── src/
             │   ├── api/client.ts   # API client for /admin/* endpoints
             │   ├── context/        # Auth context (localStorage token)
-            │   ├── components/     # Layout (sidebar), DismissibleAlert
+            │   ├── components/     # Layout, brand marks, shadcn/ui primitives
             │   └── pages/          # Providers, Keys, Usage, Guardrails, Playground
             ├── vite.config.ts
             └── package.json

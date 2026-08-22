@@ -1,26 +1,31 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
-import Box from '@mui/joy/Box'
-import Typography from '@mui/joy/Typography'
-import Table from '@mui/joy/Table'
-import Sheet from '@mui/joy/Sheet'
-import Button from '@mui/joy/Button'
-import IconButton from '@mui/joy/IconButton'
-import Input from '@mui/joy/Input'
-import Select from '@mui/joy/Select'
-import Option from '@mui/joy/Option'
-import FormControl from '@mui/joy/FormControl'
-import FormLabel from '@mui/joy/FormLabel'
-import DismissibleAlert from '../components/DismissibleAlert'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Chip from '@mui/joy/Chip'
-import Modal from '@mui/joy/Modal'
-import ModalDialog from '@mui/joy/ModalDialog'
-import ModalClose from '@mui/joy/ModalClose'
-import Stack from '@mui/joy/Stack'
-import Divider from '@mui/joy/Divider'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
+
+import PageHeader from '@/components/PageHeader'
+import DismissibleAlert from '@/components/DismissibleAlert'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { formatDateTime } from '@/lib/format'
 import {
   listGuardrails,
   createGuardrail,
@@ -29,7 +34,11 @@ import {
   deleteGuardrailEvent,
   type Guardrail,
   type GuardrailEvent,
-} from '../api/client'
+} from '@/api/client'
+
+function ModeBadge({ mode }: { mode: string }) {
+  return <Badge variant={mode === 'reject' ? 'default' : 'outline'}>{mode}</Badge>
+}
 
 export default function GuardrailsPage() {
   const [guardrails, setGuardrails] = useState<Guardrail[]>([])
@@ -38,29 +47,35 @@ export default function GuardrailsPage() {
   const [error, setError] = useState('')
   const [flash, setFlash] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Guardrail | null>(null)
 
   const [pattern, setPattern] = useState('')
   const [mode, setMode] = useState('reject')
   const [replaceBy, setReplaceBy] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      const [g, e] = await Promise.all([
-        listGuardrails(),
-        listGuardrailEvents({ limit: '50' }),
-      ])
-      setGuardrails(g || [])
-      setEvents(e.records || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [reloadTick, setReloadTick] = useState(0)
+  const reload = useCallback(() => setReloadTick((t) => t + 1), [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    let stale = false
+    ;(async () => {
+      try {
+        const [g, e] = await Promise.all([
+          listGuardrails(),
+          listGuardrailEvents({ limit: '50' }),
+        ])
+        if (stale) return
+        setGuardrails(g || [])
+        setEvents(e.records || [])
+      } catch (err: unknown) {
+        if (!stale) setError(err instanceof Error ? err.message : 'Failed to load data')
+      } finally {
+        if (!stale) setLoading(false)
+      }
+    })()
+    return () => { stale = true }
+  }, [reloadTick])
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -81,7 +96,7 @@ export default function GuardrailsPage() {
       setMode('reject')
       setReplaceBy('')
       setModalOpen(false)
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create guardrail')
     } finally {
@@ -90,11 +105,10 @@ export default function GuardrailsPage() {
   }
 
   async function handleDeleteGuardrail(id: string) {
-    if (!confirm('Delete this guardrail rule?')) return
     try {
       await deleteGuardrail(id)
       setFlash('Guardrail deleted.')
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete guardrail')
     }
@@ -104,160 +118,192 @@ export default function GuardrailsPage() {
     try {
       await deleteGuardrailEvent(id)
       setFlash('Event deleted.')
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete event')
     }
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography level="h3">Guardrails</Typography>
-        <Button startDecorator={<AddIcon />} onClick={() => setModalOpen(true)}>
-          Add Rule
-        </Button>
-      </Box>
+    <div>
+      <PageHeader
+        index="04"
+        title="Guardrails"
+        description="Patterns screened out of every request before it reaches a provider."
+        actions={
+          <Button onClick={() => setModalOpen(true)}>
+            <PlusIcon /> Add rule
+          </Button>
+        }
+      />
 
-      {flash && <DismissibleAlert color="success" sx={{ mb: 2 }} onClose={() => setFlash('')}>{flash}</DismissibleAlert>}
-      {error && <DismissibleAlert color="danger" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</DismissibleAlert>}
+      {flash && <DismissibleAlert variant="success" className="mb-4" onClose={() => setFlash('')}>{flash}</DismissibleAlert>}
+      {error && <DismissibleAlert variant="destructive" className="mb-4" onClose={() => setError('')}>{error}</DismissibleAlert>}
 
-      {/* Guardrail Rules */}
-      <Card variant="outlined" sx={{ mb: 3 }}>
-        <CardContent sx={{ p: 0 }}>
-          <Sheet sx={{ overflow: 'auto' }}>
-            <Table stickyHeader>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Pattern</th>
-                  <th>Mode</th>
-                  <th>Replacement</th>
-                  <th>Created</th>
-                  <th style={{ width: 60 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={6}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>Loading...</Typography></td></tr>
-                ) : guardrails.length === 0 ? (
-                  <tr><td colSpan={6}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>No guardrail rules.</Typography></td></tr>
-                ) : (
-                  guardrails.map((g) => (
-                    <tr key={g.id}>
-                      <td><Typography level="body-xs" fontFamily="monospace">{g.id.slice(0, 8)}</Typography></td>
-                      <td><Typography level="body-xs" fontFamily="monospace">{g.pattern}</Typography></td>
-                      <td>
-                        <Chip
-                          size="sm"
-                          color={g.mode === 'reject' ? 'danger' : 'warning'}
-                          variant="soft"
-                        >
-                          {g.mode}
-                        </Chip>
-                      </td>
-                      <td><Typography level="body-xs">{g.replace_by || '-'}</Typography></td>
-                      <td><Typography level="body-xs">{new Date(g.created_at).toLocaleString()}</Typography></td>
-                      <td>
-                        <IconButton size="sm" color="danger" variant="plain" onClick={() => handleDeleteGuardrail(g.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Sheet>
-        </CardContent>
+      {/* Guardrail rules */}
+      <p className="kicker mb-2 text-muted-foreground">Rules</p>
+      <Card className="mb-8 gap-0 py-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Pattern</TableHead>
+              <TableHead>Mode</TableHead>
+              <TableHead>Replacement</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-12" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  loading…
+                </TableCell>
+              </TableRow>
+            ) : guardrails.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  no guardrail rules
+                </TableCell>
+              </TableRow>
+            ) : (
+              guardrails.map((g) => (
+                <TableRow key={g.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{g.id.slice(0, 8)}</TableCell>
+                  <TableCell className="font-mono text-xs">{g.pattern}</TableCell>
+                  <TableCell><ModeBadge mode={g.mode} /></TableCell>
+                  <TableCell className="font-mono text-xs">{g.replace_by || '—'}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(g.created_at)}</TableCell>
+                  <TableCell className="py-1 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Delete guardrail rule"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget(g)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
-      {/* Guardrail Events */}
-      <Divider sx={{ my: 3 }} />
-      <Typography level="h4" sx={{ mb: 2 }}>Recent Events</Typography>
-      <Card variant="outlined">
-        <CardContent sx={{ p: 0 }}>
-          <Sheet sx={{ overflow: 'auto' }}>
-            <Table stickyHeader size="sm">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Pattern</th>
-                  <th>Mode</th>
-                  <th>API Key</th>
-                  <th>Input Text</th>
-                  <th>Time</th>
-                  <th style={{ width: 60 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.length === 0 ? (
-                  <tr><td colSpan={7}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>No events recorded.</Typography></td></tr>
-                ) : (
-                  events.map((ev) => (
-                    <tr key={ev.id}>
-                      <td><Typography level="body-xs" fontFamily="monospace">{ev.id.slice(0, 8)}</Typography></td>
-                      <td><Typography level="body-xs" fontFamily="monospace">{ev.pattern}</Typography></td>
-                      <td>
-                        <Chip size="sm" color={ev.mode === 'reject' ? 'danger' : 'warning'} variant="soft">
-                          {ev.mode}
-                        </Chip>
-                      </td>
-                      <td><Typography level="body-xs" fontFamily="monospace">{ev.api_key_id.slice(0, 8)}</Typography></td>
-                      <td>
-                        <Typography level="body-xs" sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {ev.input_text}
-                        </Typography>
-                      </td>
-                      <td><Typography level="body-xs">{new Date(ev.created_at).toLocaleString()}</Typography></td>
-                      <td>
-                        <IconButton size="sm" color="danger" variant="plain" onClick={() => handleDeleteEvent(ev.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Sheet>
-        </CardContent>
+      {/* Guardrail events */}
+      <p className="kicker mb-2 text-muted-foreground">Recent events</p>
+      <Card className="gap-0 py-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Pattern</TableHead>
+              <TableHead>Mode</TableHead>
+              <TableHead>API key</TableHead>
+              <TableHead>Input text</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead className="w-12" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {events.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  no events recorded
+                </TableCell>
+              </TableRow>
+            ) : (
+              events.map((ev) => (
+                <TableRow key={ev.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{ev.id.slice(0, 8)}</TableCell>
+                  <TableCell className="font-mono text-xs">{ev.pattern}</TableCell>
+                  <TableCell><ModeBadge mode={ev.mode} /></TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{ev.api_key_id.slice(0, 8)}</TableCell>
+                  <TableCell className="max-w-xs truncate whitespace-nowrap text-xs" title={ev.input_text}>
+                    {ev.input_text}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(ev.created_at)}</TableCell>
+                  <TableCell className="py-1 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Delete event"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteEvent(ev.id)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
-      {/* Create Modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <ModalDialog>
-          <ModalClose />
-          <Typography level="h4">Add Guardrail Rule</Typography>
-          <form onSubmit={handleCreate}>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <FormControl required>
-                <FormLabel>Pattern (regex)</FormLabel>
+      {/* Create rule */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add guardrail rule</DialogTitle>
+            <DialogDescription>
+              Requests matching the pattern are rejected, or have the match replaced.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="rule-pattern">Pattern (regex)</Label>
+              <Input
+                id="rule-pattern"
+                className="font-mono text-xs"
+                value={pattern}
+                onChange={(e) => setPattern(e.target.value)}
+                placeholder="e.g. \bpassword\b"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="rule-mode">Mode</Label>
+              <Select value={mode} onValueChange={(v) => setMode(v || 'reject')}>
+                <SelectTrigger id="rule-mode" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="reject">Reject</SelectItem>
+                  <SelectItem value="replace">Replace</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {mode === 'replace' && (
+              <div className="grid gap-2">
+                <Label htmlFor="rule-replace">Replacement text</Label>
                 <Input
-                  value={pattern}
-                  onChange={(e) => setPattern(e.target.value)}
-                  placeholder="e.g. \bpassword\b"
-                  slotProps={{ input: { style: { fontFamily: 'monospace' } } }}
+                  id="rule-replace"
+                  value={replaceBy}
+                  onChange={(e) => setReplaceBy(e.target.value)}
+                  placeholder="e.g. [REDACTED]"
                 />
-              </FormControl>
-              <FormControl required>
-                <FormLabel>Mode</FormLabel>
-                <Select value={mode} onChange={(_, v) => setMode(v || 'reject')}>
-                  <Option value="reject">Reject</Option>
-                  <Option value="replace">Replace</Option>
-                </Select>
-              </FormControl>
-              {mode === 'replace' && (
-                <FormControl>
-                  <FormLabel>Replacement Text</FormLabel>
-                  <Input value={replaceBy} onChange={(e) => setReplaceBy(e.target.value)} placeholder="e.g. [REDACTED]" />
-                </FormControl>
-              )}
-              <Button type="submit" loading={submitting}>Create Rule</Button>
-            </Stack>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create rule'}
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalDialog>
-      </Modal>
-    </Box>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="Delete guardrail rule"
+        description={`Delete the rule matching “${deleteTarget?.pattern}”?`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (deleteTarget) handleDeleteGuardrail(deleteTarget.id) }}
+      />
+    </div>
   )
 }

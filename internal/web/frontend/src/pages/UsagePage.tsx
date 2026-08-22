@@ -1,29 +1,34 @@
-import { useState, useEffect, useCallback } from 'react'
-import Box from '@mui/joy/Box'
-import Typography from '@mui/joy/Typography'
-import Table from '@mui/joy/Table'
-import Sheet from '@mui/joy/Sheet'
-import Select from '@mui/joy/Select'
-import Option from '@mui/joy/Option'
-import Input from '@mui/joy/Input'
-import FormControl from '@mui/joy/FormControl'
-import FormLabel from '@mui/joy/FormLabel'
-import Button from '@mui/joy/Button'
-import DismissibleAlert from '../components/DismissibleAlert'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Stack from '@mui/joy/Stack'
-import Grid from '@mui/joy/Grid'
-import { queryUsage, listKeys, listProviders, type UsageRecord, type APIKey, type Provider } from '../api/client'
+import { useState, useEffect } from 'react'
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+import PageHeader from '@/components/PageHeader'
+import DismissibleAlert from '@/components/DismissibleAlert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { formatCompact, formatDateTime } from '@/lib/format'
+import { queryUsage, listKeys, listProviders, type UsageRecord, type APIKey, type Provider } from '@/api/client'
+
+// Radix selects cannot carry an empty item value; ALL stands in for "no filter".
+const ALL = 'all'
+
+function StatTile({ label, value }: { label: string; value: number }) {
   return (
-    <Card variant="soft" size="sm">
-      <CardContent>
-        <Typography level="body-xs" textTransform="uppercase" fontWeight="bold">
-          {label}
-        </Typography>
-        <Typography level="h3">{typeof value === 'number' ? value.toLocaleString() : value}</Typography>
+    <Card className="gap-1.5 py-4">
+      <CardContent className="px-4">
+        <p className="kicker text-muted-foreground">{label}</p>
+        <p className="mt-1.5 font-mono text-2xl font-medium" title={value.toLocaleString()}>
+          {formatCompact(value)}
+        </p>
       </CardContent>
     </Card>
   )
@@ -38,42 +43,44 @@ export default function UsagePage() {
   const [error, setError] = useState('')
 
   // Filters
-  const [filterKeyId, setFilterKeyId] = useState('')
-  const [filterProviderId, setFilterProviderId] = useState('')
+  const [filterKeyId, setFilterKeyId] = useState(ALL)
+  const [filterProviderId, setFilterProviderId] = useState(ALL)
   const [filterStart, setFilterStart] = useState('')
   const [filterEnd, setFilterEnd] = useState('')
   const [page, setPage] = useState(1)
   const perPage = 50
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      const params: Record<string, string> = {
-        limit: String(perPage),
-        offset: String((page - 1) * perPage),
+  useEffect(() => {
+    let stale = false
+    ;(async () => {
+      try {
+        const params: Record<string, string> = {
+          limit: String(perPage),
+          offset: String((page - 1) * perPage),
+        }
+        if (filterKeyId !== ALL) params.api_key_id = filterKeyId
+        if (filterProviderId !== ALL) params.provider_id = filterProviderId
+        if (filterStart) params.start = new Date(filterStart).toISOString()
+        if (filterEnd) params.end = new Date(filterEnd).toISOString()
+
+        const [result, k, p] = await Promise.all([
+          queryUsage(params),
+          listKeys(),
+          listProviders(),
+        ])
+        if (stale) return
+        setRecords(result.records || [])
+        setTotal(result.total)
+        setKeys(k || [])
+        setProviders(p || [])
+      } catch (err: unknown) {
+        if (!stale) setError(err instanceof Error ? err.message : 'Failed to load usage')
+      } finally {
+        if (!stale) setLoading(false)
       }
-      if (filterKeyId) params.api_key_id = filterKeyId
-      if (filterProviderId) params.provider_id = filterProviderId
-      if (filterStart) params.start = new Date(filterStart).toISOString()
-      if (filterEnd) params.end = new Date(filterEnd).toISOString()
-
-      const [result, k, p] = await Promise.all([
-        queryUsage(params),
-        listKeys(),
-        listProviders(),
-      ])
-      setRecords(result.records || [])
-      setTotal(result.total)
-      setKeys(k || [])
-      setProviders(p || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load usage')
-    } finally {
-      setLoading(false)
-    }
+    })()
+    return () => { stale = true }
   }, [page, filterKeyId, filterProviderId, filterStart, filterEnd])
-
-  useEffect(() => { load() }, [load])
 
   const totalPages = Math.max(1, Math.ceil(total / perPage))
 
@@ -90,143 +97,147 @@ export default function UsagePage() {
     return providers.find((p) => p.id === id)?.name || id.slice(0, 8)
   }
 
-  function handleFilter() {
-    setPage(1)
-    load()
-  }
-
   function clearFilters() {
-    setFilterKeyId('')
-    setFilterProviderId('')
+    setFilterKeyId(ALL)
+    setFilterProviderId(ALL)
     setFilterStart('')
     setFilterEnd('')
     setPage(1)
   }
 
   return (
-    <Box>
-      <Typography level="h3" sx={{ mb: 2 }}>Usage</Typography>
+    <div>
+      <PageHeader
+        index="03"
+        title="Usage"
+        description="Token usage per request, as recorded by the proxy."
+      />
 
-      {error && <DismissibleAlert color="danger" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</DismissibleAlert>}
+      {error && <DismissibleAlert variant="destructive" className="mb-4" onClose={() => setError('')}>{error}</DismissibleAlert>}
 
       {/* Filters */}
-      <Card variant="outlined" sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack direction="row" spacing={2} flexWrap="wrap" alignItems="flex-end">
-            <FormControl size="sm">
-              <FormLabel>API Key</FormLabel>
-              <Select
-                size="sm"
-                value={filterKeyId}
-                onChange={(_, v) => setFilterKeyId(v || '')}
-                placeholder="All keys"
-                sx={{ minWidth: 150 }}
-              >
-                <Option value="">All keys</Option>
+      <Card className="mb-4 py-4">
+        <CardContent className="flex flex-wrap items-end gap-4 px-4">
+          <div className="grid gap-2">
+            <Label htmlFor="filter-key">API key</Label>
+            <Select value={filterKeyId} onValueChange={(v) => { setFilterKeyId(v); setPage(1) }}>
+              <SelectTrigger id="filter-key" size="sm" className="min-w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All keys</SelectItem>
                 {keys.map((k) => (
-                  <Option key={k.id} value={k.id}>{k.name}</Option>
+                  <SelectItem key={k.id} value={k.id}>{k.name}</SelectItem>
                 ))}
-              </Select>
-            </FormControl>
-            <FormControl size="sm">
-              <FormLabel>Provider</FormLabel>
-              <Select
-                size="sm"
-                value={filterProviderId}
-                onChange={(_, v) => setFilterProviderId(v || '')}
-                placeholder="All providers"
-                sx={{ minWidth: 150 }}
-              >
-                <Option value="">All providers</Option>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="filter-provider">Provider</Label>
+            <Select value={filterProviderId} onValueChange={(v) => { setFilterProviderId(v); setPage(1) }}>
+              <SelectTrigger id="filter-provider" size="sm" className="min-w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All providers</SelectItem>
                 {providers.map((p) => (
-                  <Option key={p.id} value={p.id}>{p.name}</Option>
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
-              </Select>
-            </FormControl>
-            <FormControl size="sm">
-              <FormLabel>Start</FormLabel>
-              <Input
-                size="sm"
-                type="datetime-local"
-                value={filterStart}
-                onChange={(e) => setFilterStart(e.target.value)}
-              />
-            </FormControl>
-            <FormControl size="sm">
-              <FormLabel>End</FormLabel>
-              <Input
-                size="sm"
-                type="datetime-local"
-                value={filterEnd}
-                onChange={(e) => setFilterEnd(e.target.value)}
-              />
-            </FormControl>
-            <Button size="sm" onClick={handleFilter}>Apply</Button>
-            <Button size="sm" variant="plain" color="neutral" onClick={clearFilters}>Clear</Button>
-          </Stack>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="filter-start">Start</Label>
+            <Input
+              id="filter-start"
+              type="datetime-local"
+              className="h-8 font-mono text-xs"
+              value={filterStart}
+              onChange={(e) => { setFilterStart(e.target.value); setPage(1) }}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="filter-end">End</Label>
+            <Input
+              id="filter-end"
+              type="datetime-local"
+              className="h-8 font-mono text-xs"
+              value={filterEnd}
+              onChange={(e) => { setFilterEnd(e.target.value); setPage(1) }}
+            />
+          </div>
+          <Button size="sm" variant="ghost" onClick={clearFilters}>Clear</Button>
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid xs={6} md={3}><StatCard label="Total Records" value={total} /></Grid>
-        <Grid xs={6} md={3}><StatCard label="Prompt Tokens" value={promptTotal} /></Grid>
-        <Grid xs={6} md={3}><StatCard label="Completion Tokens" value={completionTotal} /></Grid>
-        <Grid xs={6} md={3}><StatCard label="Total Tokens" value={allTotal} /></Grid>
-      </Grid>
+      {/* Stats for the current page of records */}
+      <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="Total records" value={total} />
+        <StatTile label="Prompt tokens" value={promptTotal} />
+        <StatTile label="Completion tokens" value={completionTotal} />
+        <StatTile label="Total tokens" value={allTotal} />
+      </div>
 
-      {/* Table */}
-      <Card variant="outlined">
-        <CardContent sx={{ p: 0 }}>
-          <Sheet sx={{ overflow: 'auto' }}>
-            <Table stickyHeader size="sm">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Key</th>
-                  <th>Provider</th>
-                  <th>Model</th>
-                  <th>Prompt</th>
-                  <th>Completion</th>
-                  <th>Total</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={8}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>Loading...</Typography></td></tr>
-                ) : records.length === 0 ? (
-                  <tr><td colSpan={8}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>No usage records.</Typography></td></tr>
-                ) : (
-                  records.map((r) => (
-                    <tr key={r.id}>
-                      <td><Typography level="body-xs" fontFamily="monospace">{r.id.slice(0, 8)}</Typography></td>
-                      <td><Typography level="body-xs">{keyName(r.api_key_id)}</Typography></td>
-                      <td><Typography level="body-xs">{providerName(r.provider_id)}</Typography></td>
-                      <td><Typography level="body-xs" fontFamily="monospace">{r.model}</Typography></td>
-                      <td>{r.prompt_tokens.toLocaleString()}</td>
-                      <td>{r.completion_tokens.toLocaleString()}</td>
-                      <td><strong>{r.total_tokens.toLocaleString()}</strong></td>
-                      <td><Typography level="body-xs">{new Date(r.created_at).toLocaleString()}</Typography></td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Sheet>
-        </CardContent>
+      {/* Records */}
+      <Card className="gap-0 py-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Key</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead className="text-right">Prompt</TableHead>
+              <TableHead className="text-right">Completion</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead>Time</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  loading…
+                </TableCell>
+              </TableRow>
+            ) : records.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  no usage records
+                </TableCell>
+              </TableRow>
+            ) : (
+              records.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{r.id.slice(0, 8)}</TableCell>
+                  <TableCell>{keyName(r.api_key_id)}</TableCell>
+                  <TableCell>{providerName(r.provider_id)}</TableCell>
+                  <TableCell className="font-mono text-xs">{r.model}</TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums">{r.prompt_tokens.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-mono text-xs tabular-nums">{r.completion_tokens.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-mono text-xs font-medium tabular-nums">{r.total_tokens.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(r.created_at)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 2 }}>
-          <Button size="sm" variant="plain" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
-          <Typography level="body-sm" sx={{ display: 'flex', alignItems: 'center' }}>
-            Page {page} of {totalPages}
-          </Typography>
-          <Button size="sm" variant="plain" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next</Button>
-        </Box>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <ChevronLeftIcon /> Previous
+          </Button>
+          <span className="font-mono text-xs text-muted-foreground">
+            p. {page}/{totalPages}
+          </span>
+          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+            Next <ChevronRightIcon />
+          </Button>
+        </div>
       )}
-    </Box>
+    </div>
   )
 }

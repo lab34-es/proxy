@@ -1,23 +1,24 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
-import Box from '@mui/joy/Box'
-import Typography from '@mui/joy/Typography'
-import Table from '@mui/joy/Table'
-import Sheet from '@mui/joy/Sheet'
-import Button from '@mui/joy/Button'
-import IconButton from '@mui/joy/IconButton'
-import Input from '@mui/joy/Input'
-import FormControl from '@mui/joy/FormControl'
-import FormLabel from '@mui/joy/FormLabel'
-import DismissibleAlert from '../components/DismissibleAlert'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Modal from '@mui/joy/Modal'
-import ModalDialog from '@mui/joy/ModalDialog'
-import ModalClose from '@mui/joy/ModalClose'
-import Stack from '@mui/joy/Stack'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
-import { listProviders, createProvider, deleteProvider, type Provider } from '../api/client'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
+
+import PageHeader from '@/components/PageHeader'
+import DismissibleAlert from '@/components/DismissibleAlert'
+import ConfirmDialog from '@/components/ConfirmDialog'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { formatDateTime } from '@/lib/format'
+import { listProviders, createProvider, deleteProvider, type Provider } from '@/api/client'
 
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([])
@@ -25,25 +26,31 @@ export default function ProvidersPage() {
   const [error, setError] = useState('')
   const [flash, setFlash] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Provider | null>(null)
 
   const [name, setName] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await listProviders()
-      setProviders(data || [])
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load providers')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [reloadTick, setReloadTick] = useState(0)
+  const reload = useCallback(() => setReloadTick((t) => t + 1), [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    let stale = false
+    ;(async () => {
+      try {
+        const data = await listProviders()
+        if (stale) return
+        setProviders(data || [])
+      } catch (err: unknown) {
+        if (!stale) setError(err instanceof Error ? err.message : 'Failed to load providers')
+      } finally {
+        if (!stale) setLoading(false)
+      }
+    })()
+    return () => { stale = true }
+  }, [reloadTick])
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -60,7 +67,7 @@ export default function ProvidersPage() {
       setBaseUrl('')
       setApiKey('')
       setModalOpen(false)
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create provider')
     } finally {
@@ -69,90 +76,128 @@ export default function ProvidersPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this provider? All associated API keys will also be deleted.')) return
     try {
       await deleteProvider(id)
       setFlash('Provider deleted.')
-      await load()
+      reload()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to delete provider')
     }
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography level="h3">Providers</Typography>
-        <Button startDecorator={<AddIcon />} onClick={() => setModalOpen(true)}>
-          Add Provider
-        </Button>
-      </Box>
+    <div>
+      <PageHeader
+        index="01"
+        title="Providers"
+        description="The upstream LLM backends that requests are forwarded to."
+        actions={
+          <Button onClick={() => setModalOpen(true)}>
+            <PlusIcon /> Add provider
+          </Button>
+        }
+      />
 
-      {flash && <DismissibleAlert color="success" sx={{ mb: 2 }} onClose={() => setFlash('')}>{flash}</DismissibleAlert>}
-      {error && <DismissibleAlert color="danger" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</DismissibleAlert>}
+      {flash && <DismissibleAlert variant="success" className="mb-4" onClose={() => setFlash('')}>{flash}</DismissibleAlert>}
+      {error && <DismissibleAlert variant="destructive" className="mb-4" onClose={() => setError('')}>{error}</DismissibleAlert>}
 
-      <Card variant="outlined">
-        <CardContent sx={{ p: 0 }}>
-          <Sheet sx={{ overflow: 'auto' }}>
-            <Table stickyHeader>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Base URL</th>
-                  <th>Created</th>
-                  <th style={{ width: 60 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={5}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>Loading...</Typography></td></tr>
-                ) : providers.length === 0 ? (
-                  <tr><td colSpan={5}><Typography level="body-sm" sx={{ textAlign: 'center', py: 2 }}>No providers configured.</Typography></td></tr>
-                ) : (
-                  providers.map((p) => (
-                    <tr key={p.id}>
-                      <td><Typography level="body-xs" fontFamily="monospace">{p.id.slice(0, 8)}</Typography></td>
-                      <td>{p.name}</td>
-                      <td><Typography level="body-xs" fontFamily="monospace">{p.base_url}</Typography></td>
-                      <td><Typography level="body-xs">{new Date(p.created_at).toLocaleString()}</Typography></td>
-                      <td>
-                        <IconButton size="sm" color="danger" variant="plain" onClick={() => handleDelete(p.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </Sheet>
-        </CardContent>
+      <Card className="gap-0 py-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Base URL</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-12" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  loading…
+                </TableCell>
+              </TableRow>
+            ) : providers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-6 text-center font-mono text-xs text-muted-foreground">
+                  no providers configured
+                </TableCell>
+              </TableRow>
+            ) : (
+              providers.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{p.id.slice(0, 8)}</TableCell>
+                  <TableCell>{p.name}</TableCell>
+                  <TableCell className="font-mono text-xs">{p.base_url}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(p.created_at)}</TableCell>
+                  <TableCell className="py-1 text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Delete provider ${p.name}`}
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => setDeleteTarget(p)}
+                    >
+                      <Trash2Icon />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </Card>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)}>
-        <ModalDialog>
-          <ModalClose />
-          <Typography level="h4">Add Provider</Typography>
-          <form onSubmit={handleCreate}>
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <FormControl required>
-                <FormLabel>Name</FormLabel>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. OpenAI" />
-              </FormControl>
-              <FormControl required>
-                <FormLabel>Base URL</FormLabel>
-                <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com" />
-              </FormControl>
-              <FormControl required>
-                <FormLabel>API Key</FormLabel>
-                <Input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." />
-              </FormControl>
-              <Button type="submit" loading={submitting}>Create Provider</Button>
-            </Stack>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add provider</DialogTitle>
+            <DialogDescription>Register an upstream backend and the key used to reach it.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="provider-name">Name</Label>
+              <Input id="provider-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. OpenAI" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="provider-url">Base URL</Label>
+              <Input
+                id="provider-url"
+                className="font-mono text-xs"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                placeholder="https://api.openai.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="provider-key">API key</Label>
+              <Input
+                id="provider-key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-…"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Creating…' : 'Create provider'}
+              </Button>
+            </DialogFooter>
           </form>
-        </ModalDialog>
-      </Modal>
-    </Box>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="Delete provider"
+        description={`Delete “${deleteTarget?.name}”? All associated API keys will also be deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget.id) }}
+      />
+    </div>
   )
 }

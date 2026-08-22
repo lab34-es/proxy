@@ -1,18 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import Box from '@mui/joy/Box'
-import Typography from '@mui/joy/Typography'
-import Input from '@mui/joy/Input'
-import Button from '@mui/joy/Button'
-import FormControl from '@mui/joy/FormControl'
-import FormLabel from '@mui/joy/FormLabel'
-import Textarea from '@mui/joy/Textarea'
-import Card from '@mui/joy/Card'
-import CardContent from '@mui/joy/CardContent'
-import Sheet from '@mui/joy/Sheet'
-import Stack from '@mui/joy/Stack'
-import DismissibleAlert from '../components/DismissibleAlert'
-import SendIcon from '@mui/icons-material/Send'
-import DeleteIcon from '@mui/icons-material/Delete'
+import { SendIcon, XIcon } from 'lucide-react'
+
+import PageHeader from '@/components/PageHeader'
+import DismissibleAlert from '@/components/DismissibleAlert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 
 interface Message {
   role: 'user' | 'assistant' | 'system'
@@ -154,131 +150,105 @@ export default function PlaygroundPage() {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 48px)' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography level="h3">Playground</Typography>
-        <Button
-          size="sm"
-          variant="plain"
-          color="danger"
-          startDecorator={<DeleteIcon />}
-          onClick={clearConversation}
-        >
-          Clear
-        </Button>
-      </Box>
+    <div className="flex h-[calc(100svh-3rem)] flex-col lg:h-[calc(100svh-4rem)]">
+      <PageHeader
+        index="05"
+        title="Playground"
+        description="Send a request through the proxy with one of its API keys."
+        actions={
+          <Button variant="outline" size="sm" onClick={clearConversation}>
+            <XIcon /> Clear
+          </Button>
+        }
+      />
 
-      {error && <DismissibleAlert color="danger" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</DismissibleAlert>}
+      {error && <DismissibleAlert variant="destructive" className="mb-4" onClose={() => setError('')}>{error}</DismissibleAlert>}
 
-      {/* Config */}
-      <Card variant="outlined" sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            <FormControl size="sm" sx={{ flex: 1, minWidth: 200 }}>
-              <FormLabel>API Key</FormLabel>
+      {/* Request configuration */}
+      <Card className="mb-4 py-4">
+        <CardContent className="grid gap-4 px-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="pg-key">API key</Label>
               <Input
+                id="pg-key"
                 type="password"
-                size="sm"
+                className="h-8 font-mono text-xs"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="llmp-..."
+                placeholder="llmp-…"
               />
-            </FormControl>
-            <FormControl size="sm" sx={{ flex: 1, minWidth: 200 }}>
-              <FormLabel>Model</FormLabel>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="pg-model">Model</Label>
               <Input
-                size="sm"
+                id="pg-model"
+                className="h-8 font-mono text-xs"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="e.g. gpt-4"
               />
-            </FormControl>
-          </Stack>
-          <FormControl size="sm" sx={{ mt: 1 }}>
-            <FormLabel>System Prompt</FormLabel>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="pg-system">System prompt</Label>
             <Textarea
-              size="sm"
-              minRows={1}
-              maxRows={3}
+              id="pg-system"
+              className="min-h-8 text-xs"
+              rows={1}
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="Optional system prompt..."
+              placeholder="Optional system prompt…"
             />
-          </FormControl>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Messages */}
-      <Sheet
-        variant="outlined"
-        sx={{
-          flex: 1,
-          overflow: 'auto',
-          borderRadius: 'sm',
-          p: 2,
-          mb: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
-        }}
-      >
+      {/* Conversation log */}
+      <div className="mb-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto border bg-card p-4">
         {conversation.length === 0 ? (
-          <Typography level="body-sm" sx={{ color: 'text.tertiary', textAlign: 'center', mt: 4 }}>
-            Send a message to start a conversation.
-          </Typography>
+          <p className="mt-8 text-center font-mono text-xs text-muted-foreground">
+            send a message to start a conversation
+          </p>
         ) : (
           conversation.map((msg, i) => (
-            <Box
+            <div
               key={i}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              }}
+              className={cn('flex max-w-[85%] flex-col gap-1', msg.role === 'user' ? 'self-end items-end' : 'self-start')}
             >
-              <Card
-                size="sm"
-                variant={msg.role === 'user' ? 'solid' : 'soft'}
-                color={msg.role === 'user' ? 'primary' : 'neutral'}
-                sx={{ maxWidth: '80%' }}
+              <span className="kicker text-muted-foreground">
+                {msg.role === 'user' ? 'you' : 'assistant'}
+              </span>
+              <div
+                className={cn(
+                  'border px-3 py-2 text-sm whitespace-pre-wrap break-words',
+                  msg.role === 'user'
+                    ? 'border-carbon bg-carbon text-bone dark:border-bone/90 dark:bg-bone/90 dark:text-ink'
+                    : 'bg-background',
+                )}
               >
-                <CardContent>
-                  <Typography
-                    level="body-sm"
-                    sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                  >
-                    {msg.content || (streaming && i === conversation.length - 1 ? '...' : '')}
-                  </Typography>
-                </CardContent>
-              </Card>
-              <Typography level="body-xs" sx={{ mt: 0.5, color: 'text.tertiary' }}>
-                {msg.role === 'user' ? 'You' : 'Assistant'}
-              </Typography>
-            </Box>
+                {msg.content || (streaming && i === conversation.length - 1 ? '▍' : '')}
+              </div>
+            </div>
           ))
         )}
         <div ref={messagesEndRef} />
-      </Sheet>
+      </div>
 
       {/* Input */}
-      <Box sx={{ display: 'flex', gap: 1 }}>
+      <div className="flex gap-2">
         <Input
-          sx={{ flex: 1 }}
-          placeholder="Type a message..."
+          className="flex-1"
+          placeholder="Type a message…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={streaming}
         />
-        <Button
-          onClick={sendMessage}
-          disabled={streaming}
-          loading={streaming}
-          startDecorator={<SendIcon />}
-        >
-          Send
+        <Button onClick={sendMessage} disabled={streaming}>
+          <SendIcon /> {streaming ? 'Streaming…' : 'Send'}
         </Button>
-      </Box>
-    </Box>
+      </div>
+    </div>
   )
 }

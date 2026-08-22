@@ -12,6 +12,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: internal/web/frontend/package-lock.json
+
+      # The Go build embeds frontend/dist, so the frontend must be linted
+      # and built before any Go package compiles.
+      - name: Build frontend
+        working-directory: internal/web/frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
