@@ -1,7 +1,7 @@
-llm-proxy.db
-llm-proxy.db-shm
-llm-proxy.db-wal
-llm-proxy
+/proxy.db
+/proxy.db-shm
+/proxy.db-wal
+/proxy
 coverage.out
 
 # Frontend

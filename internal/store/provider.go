@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lab34/llm-proxy/internal/models"
+	"github.com/lab34-es/proxy/internal/models"
 )
 
 type ProviderStore struct {

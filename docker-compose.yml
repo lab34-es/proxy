@@ -1,15 +1,15 @@
 services:
-  llm-proxy:
-    image: ghcr.io/lab34/llm-proxy:latest
+  proxy:
+    image: ghcr.io/lab34-es/proxy:latest
     ports:
       - "8080:8080"
     environment:
       - ADMIN_TOKEN=change-me-to-a-secure-token
       - ADDR=:8080
-      - DSN=/data/llm-proxy.db
+      - DSN=/data/proxy.db
     volumes:
-      - llm-proxy-data:/data
+      - proxy-data:/data
     restart: unless-stopped
 
 volumes:
-  llm-proxy-data:
+  proxy-data:

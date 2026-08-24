@@ -5,9 +5,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lab34/llm-proxy/internal/db"
-	"github.com/lab34/llm-proxy/internal/models"
-	"github.com/lab34/llm-proxy/internal/store"
+	"github.com/lab34-es/proxy/internal/db"
+	"github.com/lab34-es/proxy/internal/models"
+	"github.com/lab34-es/proxy/internal/store"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
