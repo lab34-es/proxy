@@ -17,7 +17,7 @@ func TestLoad_Defaults(t *testing.T) {
 	cfg := Load()
 
 	assert.Equal(t, ":8080", cfg.Addr)
-	assert.Equal(t, "llm-proxy.db", cfg.DSN)
+	assert.Equal(t, "proxy.db", cfg.DSN)
 	assert.Equal(t, "", cfg.AdminToken)
 	assert.Equal(t, "", cfg.SessionSecret)
 }

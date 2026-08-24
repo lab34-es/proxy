@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lab34/llm-proxy/internal/models"
-	"github.com/lab34/llm-proxy/internal/store"
+	"github.com/lab34-es/proxy/internal/models"
+	"github.com/lab34-es/proxy/internal/store"
 )
 
 // Forwarder proxies OpenAI-compatible requests to an upstream provider.

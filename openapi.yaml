@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: LLM Proxy
+  title: lab34/proxy
   description: |
     An OpenAI-compatible LLM proxy that routes requests to any OpenAI-compatible
     backend. Manages upstream provider credentials, issues proxy API keys for

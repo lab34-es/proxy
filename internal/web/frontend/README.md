@@ -1,6 +1,6 @@
-# llm-proxy dashboard
+# proxy dashboard
 
-The admin console for llm-proxy, following the lab34 brand guidelines: React 19 +
+The admin console for proxy, following the lab34 brand guidelines: React 19 +
 TypeScript on Vite, styled with Tailwind CSS v4 and [shadcn/ui](https://ui.shadcn.com)
 components (Radix primitives + `class-variance-authority`).
 

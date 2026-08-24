@@ -7,13 +7,13 @@ import (
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 
-	"github.com/lab34/llm-proxy/internal/config"
-	"github.com/lab34/llm-proxy/internal/db"
-	"github.com/lab34/llm-proxy/internal/handler"
-	"github.com/lab34/llm-proxy/internal/middleware"
-	"github.com/lab34/llm-proxy/internal/proxy"
-	"github.com/lab34/llm-proxy/internal/store"
-	"github.com/lab34/llm-proxy/internal/web"
+	"github.com/lab34-es/proxy/internal/config"
+	"github.com/lab34-es/proxy/internal/db"
+	"github.com/lab34-es/proxy/internal/handler"
+	"github.com/lab34-es/proxy/internal/middleware"
+	"github.com/lab34-es/proxy/internal/proxy"
+	"github.com/lab34-es/proxy/internal/store"
+	"github.com/lab34-es/proxy/internal/web"
 )
 
 //go:embed openapi.yaml
@@ -97,7 +97,7 @@ func main() {
 	v1.GET("/models", proxyH.ListModels)
 
 	// Start.
-	log.Printf("LLM Proxy listening on %s", cfg.Addr)
+	log.Printf("proxy listening on %s", cfg.Addr)
 	log.Printf("Swagger UI: http://localhost%s/docs", cfg.Addr)
 	log.Printf("Dashboard:  http://localhost%s/dashboard", cfg.Addr)
 	if err := e.Start(cfg.Addr); err != nil {

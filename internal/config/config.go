@@ -22,7 +22,7 @@ func Load() Config {
 	adminToken := envOr("ADMIN_TOKEN", "")
 	return Config{
 		Addr:          envOr("ADDR", ":8080"),
-		DSN:           envOr("DSN", "llm-proxy.db"),
+		DSN:           envOr("DSN", "proxy.db"),
 		AdminToken:    adminToken,
 		SessionSecret: envOr("SESSION_SECRET", adminToken),
 	}

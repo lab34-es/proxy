@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/lab34/llm-proxy/internal/middleware"
-	"github.com/lab34/llm-proxy/internal/proxy"
-	"github.com/lab34/llm-proxy/internal/store"
+	"github.com/lab34-es/proxy/internal/middleware"
+	"github.com/lab34-es/proxy/internal/proxy"
+	"github.com/lab34-es/proxy/internal/store"
 	"github.com/labstack/echo/v4"
 )
 

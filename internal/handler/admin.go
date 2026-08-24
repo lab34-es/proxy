@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/lab34/llm-proxy/internal/store"
+	"github.com/lab34-es/proxy/internal/store"
 	"github.com/labstack/echo/v4"
 )
 

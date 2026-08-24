@@ -1,4 +1,4 @@
-module github.com/lab34/llm-proxy
+module github.com/lab34-es/proxy
 
 go 1.25.0
 
