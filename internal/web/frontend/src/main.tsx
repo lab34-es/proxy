@@ -1,20 +1,26 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { CssVarsProvider } from '@mui/joy/styles'
-import CssBaseline from '@mui/joy/CssBaseline'
+
+import '@fontsource/ibm-plex-sans/400.css'
+import '@fontsource/ibm-plex-sans/400-italic.css'
+import '@fontsource/ibm-plex-sans/500.css'
+import '@fontsource/ibm-plex-mono/400.css'
+import '@fontsource/ibm-plex-mono/500.css'
+import './index.css'
+
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './lib/theme'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter basename="/dashboard">
-      <CssVarsProvider defaultMode="system">
-        <CssBaseline />
+      <ThemeProvider>
         <AuthProvider>
           <App />
         </AuthProvider>
-      </CssVarsProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
 )

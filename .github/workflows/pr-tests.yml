@@ -12,13 +12,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: internal/web/frontend/package-lock.json
+
+      # The Go build embeds frontend/dist, so the frontend must be linted
+      # and built before any Go package compiles.
+      - name: Build frontend
+        working-directory: internal/web/frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
       - name: Run tests with coverage
-        run: go test ./internal/... -coverprofile=coverage.out -count=1
+        # node_modules can ship stray Go packages (e.g. flatted) that would
+        # enter the pattern and dilute the coverage total.
+        run: go test $(go list ./internal/... | grep -v /node_modules/) -coverprofile=coverage.out -count=1
 
       - name: Check coverage threshold
         run: |

@@ -1,32 +1,45 @@
-import Alert from '@mui/joy/Alert'
-import IconButton from '@mui/joy/IconButton'
-import CloseIcon from '@mui/icons-material/Close'
-import type { ColorPaletteProp } from '@mui/joy/styles'
 import type { ReactNode } from 'react'
+import { XIcon } from 'lucide-react'
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 interface Props {
-  color: ColorPaletteProp
+  variant?: 'default' | 'destructive' | 'success'
+  title?: string
   children: ReactNode
   onClose: () => void
-  endDecorator?: ReactNode
-  sx?: Record<string, unknown>
+  endAction?: ReactNode
+  className?: string
 }
 
-export default function DismissibleAlert({ color, children, onClose, endDecorator, sx }: Props) {
+const DEFAULT_TITLES = {
+  default: 'notice',
+  success: 'ok',
+  destructive: 'error',
+} as const
+
+export default function DismissibleAlert({
+  variant = 'default',
+  title,
+  children,
+  onClose,
+  endAction,
+  className,
+}: Props) {
   return (
-    <Alert
-      color={color}
-      sx={sx}
-      endDecorator={
-        <>
-          {endDecorator}
-          <IconButton size="sm" color={color} variant="plain" onClick={onClose}>
-            <CloseIcon />
-          </IconButton>
-        </>
-      }
-    >
-      {children}
+    <Alert variant={variant} className={cn('pr-24', className)}>
+      <AlertTitle className={variant === 'destructive' ? 'text-destructive' : undefined}>
+        {title ?? DEFAULT_TITLES[variant]}
+      </AlertTitle>
+      <AlertDescription>{children}</AlertDescription>
+      <div className="absolute top-2 right-2 flex items-center gap-1">
+        {endAction}
+        <Button variant="ghost" size="icon-sm" aria-label="Dismiss" onClick={onClose}>
+          <XIcon />
+        </Button>
+      </div>
     </Alert>
   )
 }

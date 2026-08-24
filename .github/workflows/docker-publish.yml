@@ -35,7 +35,9 @@ jobs:
           go-version-file: go.mod
 
       - name: Run tests with coverage
-        run: go test ./internal/... -coverprofile=coverage.out -count=1
+        # node_modules can ship stray Go packages (e.g. flatted) that would
+        # enter the pattern and dilute the coverage total.
+        run: go test $(go list ./internal/... | grep -v /node_modules/) -coverprofile=coverage.out -count=1
 
       - name: Check coverage threshold
         run: |

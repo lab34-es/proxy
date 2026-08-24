@@ -1,130 +1,110 @@
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import Box from '@mui/joy/Box'
-import Sheet from '@mui/joy/Sheet'
-import List from '@mui/joy/List'
-import ListItem from '@mui/joy/ListItem'
-import ListItemButton from '@mui/joy/ListItemButton'
-import ListItemContent from '@mui/joy/ListItemContent'
-import ListItemDecorator from '@mui/joy/ListItemDecorator'
-import Typography from '@mui/joy/Typography'
-import Divider from '@mui/joy/Divider'
-import IconButton from '@mui/joy/IconButton'
-import DnsIcon from '@mui/icons-material/Dns'
-import VpnKeyIcon from '@mui/icons-material/VpnKey'
-import BarChartIcon from '@mui/icons-material/BarChart'
-import ShieldIcon from '@mui/icons-material/Shield'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
-import LogoutIcon from '@mui/icons-material/Logout'
-import DarkModeIcon from '@mui/icons-material/DarkMode'
-import LightModeIcon from '@mui/icons-material/LightMode'
-import { useColorScheme } from '@mui/joy/styles'
-import { useAuth } from '../context/AuthContext'
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import {
+  ServerIcon,
+  KeyRoundIcon,
+  ChartNoAxesColumnIcon,
+  ShieldIcon,
+  TerminalIcon,
+  LogOutIcon,
+  MoonIcon,
+  SunIcon,
+} from 'lucide-react'
+
+import Lockup from '@/components/brand/Lockup'
+import Monogram from '@/components/brand/Monogram'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { useTheme } from '@/lib/theme'
+import { useAuth } from '@/context/AuthContext'
+import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { path: 'providers', label: 'Providers', icon: <DnsIcon /> },
-  { path: 'keys', label: 'API Keys', icon: <VpnKeyIcon /> },
-  { path: 'usage', label: 'Usage', icon: <BarChartIcon /> },
-  { path: 'guardrails', label: 'Guardrails', icon: <ShieldIcon /> },
-  { path: 'playground', label: 'Playground', icon: <SmartToyIcon /> },
+  { path: 'providers', index: '01', label: 'Providers', icon: ServerIcon },
+  { path: 'keys', index: '02', label: 'API keys', icon: KeyRoundIcon },
+  { path: 'usage', index: '03', label: 'Usage', icon: ChartNoAxesColumnIcon },
+  { path: 'guardrails', index: '04', label: 'Guardrails', icon: ShieldIcon },
+  { path: 'playground', index: '05', label: 'Playground', icon: TerminalIcon },
 ]
 
 function ThemeToggle() {
-  const { mode, setMode } = useColorScheme()
+  const { resolvedTheme, setTheme } = useTheme()
   return (
-    <IconButton
-      size="sm"
-      variant="plain"
-      color="neutral"
-      onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
-      sx={{ ml: 'auto' }}
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      aria-label={resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
     >
-      {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-    </IconButton>
+      {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
+    </Button>
   )
 }
 
 export default function Layout() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { logout } = useAuth()
 
-  const currentPath = location.pathname.replace(/^\//, '').split('/')[0]
-
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Sidebar */}
-      <Sheet
-        sx={{
-          width: 240,
-          flexShrink: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          borderRight: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography level="title-lg" sx={{ flexGrow: 1 }}>
-            LLM Proxy
-          </Typography>
+    <div className="flex min-h-svh">
+      <aside className="flex w-60 shrink-0 flex-col border-r">
+        <div className="flex h-14 items-center justify-between gap-2 px-4">
+          <Lockup className="text-lg" />
           <ThemeToggle />
-        </Box>
-        <Divider />
-        <List
-          sx={{
-            '--ListItem-radius': '8px',
-            '--List-padding': '8px',
-            '--List-gap': '4px',
-            flexGrow: 1,
-          }}
-        >
-          {NAV_ITEMS.map((item) => (
-            <ListItem key={item.path}>
-              <ListItemButton
-                selected={currentPath === item.path}
-                onClick={() => navigate(item.path)}
-              >
-                <ListItemDecorator>{item.icon}</ListItemDecorator>
-                <ListItemContent>{item.label}</ListItemContent>
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-        <Divider />
-        <List
-          sx={{
-            '--ListItem-radius': '8px',
-            '--List-padding': '8px',
-            '--List-gap': '4px',
-          }}
-        >
-          <ListItem>
-            <ListItemButton
-              onClick={() => {
-                logout()
-                navigate('/login')
-              }}
-            >
-              <ListItemDecorator>
-                <LogoutIcon />
-              </ListItemDecorator>
-              <ListItemContent>Logout</ListItemContent>
-            </ListItemButton>
-          </ListItem>
-        </List>
-      </Sheet>
+        </div>
+        <Separator />
 
-      {/* Main content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          overflow: 'auto',
-        }}
-      >
-        <Outlet />
-      </Box>
-    </Box>
+        <nav className="flex-1 py-3">
+          <p className="kicker px-4 pb-2 text-muted-foreground/80">Console</p>
+          <ul className="grid gap-px">
+            {NAV_ITEMS.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm text-muted-foreground transition-colors',
+                      'hover:bg-accent hover:text-accent-foreground',
+                      isActive && 'border-brass bg-accent text-foreground',
+                    )
+                  }
+                >
+                  <span className="font-mono text-xs text-muted-foreground/70">{item.index}</span>
+                  <item.icon className="size-4" aria-hidden />
+                  <span>{item.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <Separator />
+        <div className="py-3">
+          <button
+            type="button"
+            onClick={() => {
+              logout()
+              navigate('/login')
+            }}
+            className="flex w-full items-center gap-3 border-l-2 border-transparent px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            <span className="font-mono text-xs text-muted-foreground/70">·</span>
+            <LogOutIcon className="size-4" aria-hidden />
+            <span>Log out</span>
+          </button>
+        </div>
+
+        {/* The monogram signs the footer — it certifies; it does not shout. */}
+        <div className="flex items-center gap-2 border-t px-4 py-3 font-mono text-xs text-muted-foreground">
+          <span className="flex-1 truncate">lab34 — llm-proxy</span>
+          <Monogram size={20} variant="outline" />
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 overflow-auto">
+        <div className="mx-auto max-w-6xl p-6 lg:p-8">
+          <Outlet />
+        </div>
+      </main>
+    </div>
   )
 }

@@ -20,4 +20,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn/ui components export their cva variants, and context modules
+    // export their hook next to the provider — both intentional patterns
+    // that only affect HMR granularity.
+    files: ['src/components/ui/**', 'src/context/**', 'src/lib/theme.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])
